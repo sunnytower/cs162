@@ -42,6 +42,10 @@ int init_words(WordCount **wclist) {
   if (*wclist == NULL) {
     return 1;
   }
+  // initialize.
+  (*wclist)->next = NULL;
+  (*wclist)->word = "";
+  (*wclist)->count = 0;
   return 0;
 }
 
@@ -51,7 +55,7 @@ ssize_t len_words(WordCount *wchead) {
      this function.
   */
     size_t len = 0;
-    if (wchead != NULL) {
+    if (strcmp(wchead->word, "") != 0) {
       WordCount *current = wchead;
       while (current != NULL) {
         len++;
@@ -86,19 +90,26 @@ int add_word(WordCount **wclist, char *word) {
   }
   // not exists.
   else {
-    WordCount *new_word = (WordCount *)malloc(sizeof(WordCount));
-    //error handling.
-    if (new_word == NULL) {
-      return 1;
+    if (len_words(*wclist) == 0) {
+      (*wclist)->word = new_string(word);
+      (*wclist)->count = 1;
     }
-    // insert to list head.
-    new_word->word = new_string(word);
-    new_word->count = 1;
-    new_word->next = *wclist;
-    *wclist = new_word;
+    else {
+      WordCount *new_word = (WordCount *)malloc(sizeof(WordCount));
+      //error handling.
+      if (new_word == NULL) {
+        return 1;
+      }
+      //insert to list head.
+      new_word->word = new_string(word);
+      new_word->count = 1;
+      new_word->next = *wclist;
+      *wclist = new_word;
+    }
   }
   return 0;
 }
+
 
 void fprint_words(WordCount *wchead, FILE *ofile) {
   /* print word counts to a file */
