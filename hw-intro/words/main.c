@@ -109,8 +109,11 @@ static bool wordcount_less(const WordCount *wc1, const WordCount *wc2) {
   if (wc1->count < wc2->count) {
     return true;
   }
-  else {
+  else if (wc1->count == wc2->count) {
     return strcmp(wc1->word, wc2->word) < 0;
+  }
+  else {
+    return false;
   }
 }
 
@@ -171,11 +174,6 @@ int main (int argc, char *argv[]) {
   /* Create the empty data structure */
   init_words(&word_counts);
 
-  add_word(&word_counts, "hello");
-  add_word(&word_counts, "hello");
-  add_word(&word_counts, "hlo");
-  fprint_words(word_counts, stdout);
-
   if ((argc - optind) < 1) {
     // No input file specified, instead, read from STDIN instead.
     infile = stdin;
@@ -209,9 +207,7 @@ int main (int argc, char *argv[]) {
     printf("The total number of words is: %i\n", total_words);
   } else {
     wordcount_sort(&word_counts, wordcount_less);
-
     printf("The frequencies of each word are: \n");
-    printf("the len of words is %i\n", len_words(word_counts));
     fprint_words(word_counts, stdout);
 }
   return 0;

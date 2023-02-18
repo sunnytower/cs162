@@ -37,15 +37,7 @@ int init_words(WordCount **wclist) {
      Returns 0 if no errors are encountered
      in the body of this function; 1 otherwise.
   */
-  *wclist = (WordCount *)malloc(sizeof(WordCount));
-  // error handling.
-  if (*wclist == NULL) {
-    return 1;
-  }
-  // initialize.
-  (*wclist)->next = NULL;
-  (*wclist)->word = "";
-  (*wclist)->count = 0;
+  *wclist = NULL;
   return 0;
 }
 
@@ -55,25 +47,25 @@ ssize_t len_words(WordCount *wchead) {
      this function.
   */
     size_t len = 0;
-    if (strcmp(wchead->word, "") != 0) {
-      WordCount *current = wchead;
-      while (current != NULL) {
-        len++;
-        current = current->next;
-      }
+    WordCount *current = wchead;
+    while (current != NULL) {
+      len++;
+      current = current->next;
     }
     return len;
 }
 
 WordCount *find_word(WordCount *wchead, char *word) {
   /* Return count for word, if it exists */
-  WordCount *wc = wchead;
-  while (wc != NULL) {
-    if (strcmp(word, wc->word) == 0) {
+  WordCount *wc = NULL;
+  WordCount *current = wchead;
+  while (current != NULL) {
+    if (strcmp(word, current->word) == 0) {
+      wc = current;
       break;
     }
     else {
-      wc = wc->next;
+      current = current->next;
     }
   }
   return wc;
@@ -86,26 +78,13 @@ int add_word(WordCount **wclist, char *word) {
   */
   WordCount *wc = find_word(*wclist, word);
   if (wc != NULL) {
-    wc->count++;
-  }
-  // not exists.
-  else {
-    if (len_words(*wclist) == 0) {
-      (*wclist)->word = new_string(word);
-      (*wclist)->count = 1;
-    }
-    else {
-      WordCount *new_word = (WordCount *)malloc(sizeof(WordCount));
-      //error handling.
-      if (new_word == NULL) {
-        return 1;
-      }
-      //insert to list head.
-      new_word->word = new_string(word);
-      new_word->count = 1;
-      new_word->next = *wclist;
-      *wclist = new_word;
-    }
+    wc->count += 1;
+  } else {
+    WordCount *new_wc = (WordCount *) malloc(sizeof(WordCount));
+    new_wc->word = new_string(word);
+    new_wc->count = 1;
+    new_wc->next = *wclist;
+    *wclist = new_wc;
   }
   return 0;
 }
