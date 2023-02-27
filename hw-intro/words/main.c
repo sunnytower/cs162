@@ -90,14 +90,14 @@ int count_words(WordCount **wclist, FILE *infile) {
     else {
       //find a word, add it.
       if (index != 0) {
-        WORD[index] = '\0';
+        word[index] = '\0';
         add_word(wclist,new_string(word));
         index = 0;
       }
     }
   }
   if (index != 0) {
-    WORD[index] = '\0';
+    word[index] = '\0';
     add_word(wclist,new_string(word));
   }
   return 0;
