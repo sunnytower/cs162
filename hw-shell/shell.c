@@ -104,7 +104,31 @@ void init_shell() {
     tcgetattr(shell_terminal, &shell_tmodes);
   }
 }
-
+void get_full_file_path(char *filename) {
+  char *contains_slash = strchr(filename, '/');
+  if (contains_slash == NULL) {
+    /* only deal with no slash filename.*/
+    char *path = getenv("PATH");
+    /* need to be copy, otherwise the PATH variables would be change */
+    char *path_copy = malloc(strlen(path) + 1);
+    strcpy(path_copy,path);
+    char *path_split = strtok(path_copy, ":");
+    while (path_split != NULL) {
+      char *full_path = malloc(sizeof(path_split) + strlen(filename) + 2);
+      if (full_path != NULL) {
+        strcpy(full_path, path_split);
+        strcat(full_path, "/");
+        strcat(full_path, filename);
+        if (access(full_path, F_OK) != -1) {
+          strcpy(filename, full_path);
+          break;
+        }
+      }
+      path_split = strtok(NULL, ":");
+    } 
+    free(path_copy);
+  }
+}
 int main(unused int argc, unused char* argv[]) {
   init_shell();
 
@@ -130,13 +154,20 @@ int main(unused int argc, unused char* argv[]) {
       /* child process */
       if (pid == 0) {
         const int CMD_SIZE = 100;
-        char **cmds = (char **)malloc(sizeof(tokens_get_length(tokens)));
-        for (int i = 0; i < tokens_get_length(tokens); ++i) {
+        const int length = tokens_get_length(tokens);
+        char **cmds = (char **)malloc(sizeof(length));
+        for (int i = 0; i < length; ++i) {
           cmds[i] = (char *)malloc(sizeof(CMD_SIZE));
           strcpy(cmds[i], tokens_get_token(tokens, i));
         }
+        /* deal with path name if exists */
+        get_full_file_path(cmds[0]);
         execv(cmds[0], cmds);
-
+        /* GC */
+        for (int i = 0; i < length; ++i){
+          free(cmds[i]);
+        }
+        free(cmds);
       } else {
         /* parent process */
         wait(&status);
