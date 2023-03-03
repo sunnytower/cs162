@@ -104,6 +104,7 @@ void init_shell() {
     tcgetattr(shell_terminal, &shell_tmodes);
   }
 }
+
 void get_full_file_path(char *filename) {
   char *contains_slash = strchr(filename, '/');
   if (contains_slash == NULL) {
@@ -129,6 +130,7 @@ void get_full_file_path(char *filename) {
     free(path_copy);
   }
 }
+
 int main(unused int argc, unused char* argv[]) {
   init_shell();
 
@@ -154,11 +156,10 @@ int main(unused int argc, unused char* argv[]) {
       pid_t pid = fork();
 
       if (pid == 0) {
-        setpgrp();
       /* child process */
-      /*if first argument has /, use path to find the full filename */
-        char *filename = tokens_get_token(tokens, 0);
-        // get_full_file_path(filename);
+
+        setpgrp();
+
       /* if the tokens have > or <, set the right side of > or < to infd or outfd */
         bool redirect_out = false;
         bool redirect_in = false;
@@ -168,10 +169,8 @@ int main(unused int argc, unused char* argv[]) {
         int infd = -1;
         int out_index = -1;
         int in_index = -1;
-        printf("length is %d\n",length);
         for (int i = 0; i < length; ++i) {
           if (strcmp(">", tokens_get_token(tokens, i)) == 0) {
-            printf("> find !\n");
             redirect_out = true;
             out_index = i;
             if (i < length - 1) {
@@ -198,13 +197,18 @@ int main(unused int argc, unused char* argv[]) {
         } else {
           argc = length;
         }
+
+        /*if first argument has /, use path to find the full filename */
         char *argv[argc + 1];
+        argv[argc] = NULL;
         for (int i = 0; i < argc; ++i) {
           argv[i] = tokens_get_token(tokens, i);
-          printf("%s\n", argv[i]);
+          if (i == 0) {
+            get_full_file_path(argv[i]);
+          }
+          printf(" argv[%d] is %s\n",i, argv[i]);
         }
-        argv[argc] = NULL;
-        argv[0] = filename;
+
         if (redirect_in) {
           if (!infd) {
             printf("can't open file :%s\n", in_filename);
@@ -221,12 +225,8 @@ int main(unused int argc, unused char* argv[]) {
           }
         }
         /* deal with path name if exists */
-        execv(filename, argv);
-        /* GC */
-        for (int i = 0; i < argc; ++i){
-          free(argv[i]);
-        }
-        free(argv);
+        execv(argv[0], argv);
+
       } else {
         /* parent process */
         waitpid(pid, 0, 0);
