@@ -149,28 +149,87 @@ int main(unused int argc, unused char* argv[]) {
     if (fundex >= 0) {
       cmd_table[fundex].fun(tokens);
     } else {
-      int status;
+      /* deal with pipe, redirection, exectuable file from env */
+      const int length = tokens_get_length(tokens);
       pid_t pid = fork();
-      /* child process */
+
       if (pid == 0) {
-        const int CMD_SIZE = 100;
-        const int length = tokens_get_length(tokens);
-        char **cmds = (char **)malloc(sizeof(length));
+        setpgrp();
+      /* child process */
+      /*if first argument has /, use path to find the full filename */
+        char *filename = tokens_get_token(tokens, 0);
+        // get_full_file_path(filename);
+      /* if the tokens have > or <, set the right side of > or < to infd or outfd */
+        bool redirect_out = false;
+        bool redirect_in = false;
+        char *out_filename;
+        char *in_filename;
+        int outfd = -1;
+        int infd = -1;
+        int out_index = -1;
+        int in_index = -1;
+        printf("length is %d\n",length);
         for (int i = 0; i < length; ++i) {
-          cmds[i] = (char *)malloc(sizeof(CMD_SIZE));
-          strcpy(cmds[i], tokens_get_token(tokens, i));
+          if (strcmp(">", tokens_get_token(tokens, i)) == 0) {
+            printf("> find !\n");
+            redirect_out = true;
+            out_index = i;
+            if (i < length - 1) {
+              out_filename = tokens_get_token(tokens, i + 1);
+              outfd = open(out_filename, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+            }
+            break;
+          } else if (strcmp("<", tokens_get_token(tokens, i)) == 0) {
+            redirect_in = true;
+            in_index = i;
+            if (i < length - 1) {
+              in_filename = tokens_get_token(tokens, i + 1);
+              infd = open(in_filename, O_RDONLY);
+            }
+            break;
+          }
+        }
+
+        int argc;
+        if (redirect_out) {
+          argc = out_index;
+        } else if (redirect_in) {
+          argc = in_index;
+        } else {
+          argc = length;
+        }
+        char *argv[argc + 1];
+        for (int i = 0; i < argc; ++i) {
+          argv[i] = tokens_get_token(tokens, i);
+          printf("%s\n", argv[i]);
+        }
+        argv[argc] = NULL;
+        argv[0] = filename;
+        if (redirect_in) {
+          if (!infd) {
+            printf("can't open file :%s\n", in_filename);
+          } else {
+            dup2(infd, STDIN_FILENO);
+            close(infd);
+          }
+        } else if (redirect_out) {
+          if (!outfd) {
+            printf("can't open file:%s\n",out_filename);
+          } else {
+            dup2(outfd, STDOUT_FILENO);
+            close(outfd);
+          }
         }
         /* deal with path name if exists */
-        get_full_file_path(cmds[0]);
-        execv(cmds[0], cmds);
+        execv(filename, argv);
         /* GC */
-        for (int i = 0; i < length; ++i){
-          free(cmds[i]);
+        for (int i = 0; i < argc; ++i){
+          free(argv[i]);
         }
-        free(cmds);
+        free(argv);
       } else {
         /* parent process */
-        wait(&status);
+        waitpid(pid, 0, 0);
       }
       
     }
