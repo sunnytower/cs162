@@ -105,31 +105,6 @@ void init_shell() {
   }
 }
 
-void get_full_file_path(char *filename) {
-  char *contains_slash = strchr(filename, '/');
-  if (contains_slash == NULL) {
-    /* only deal with no slash filename.*/
-    char *path = getenv("PATH");
-    /* need to be copy, otherwise the PATH variables would be change */
-    char *path_copy = malloc(strlen(path) + 1);
-    strcpy(path_copy,path);
-    char *path_split = strtok(path_copy, ":");
-    while (path_split != NULL) {
-      char *full_path = malloc(sizeof(path_split) + strlen(filename) + 2);
-      if (full_path != NULL) {
-        strcpy(full_path, path_split);
-        strcat(full_path, "/");
-        strcat(full_path, filename);
-        if (access(full_path, F_OK) != -1) {
-          strcpy(filename, full_path);
-          break;
-        }
-      }
-      path_split = strtok(NULL, ":");
-    } 
-    free(path_copy);
-  }
-}
 
 int main(unused int argc, unused char* argv[]) {
   init_shell();
@@ -198,13 +173,38 @@ int main(unused int argc, unused char* argv[]) {
           argc = length;
         }
 
-        /*if first argument has /, use path to find the full filename */
         char *argv[argc + 1];
         argv[argc] = NULL;
         for (int i = 0; i < argc; ++i) {
           argv[i] = tokens_get_token(tokens, i);
           if (i == 0) {
-            get_full_file_path(argv[i]);
+            /*if first argument has /, use path to find the full filename */
+            char *path = getenv("PATH");
+            char *path_copy = malloc(strlen(path) + 1); 
+            strcpy(path_copy, path);
+            char *contains_slash = strchr(argv[i], '/');
+            if (contains_slash == NULL) { 
+              /* only deal with no slash in filename */
+              char *path_split = strtok(path_copy, ":");
+              while (path_split != NULL) {
+                char *full_path = malloc(strlen(path_split) + strlen(argv[i]) + 2); 
+                if (full_path != NULL) {
+                  strcpy(full_path, path_split);
+                  strcat(full_path, "/");
+                  strcat(full_path, argv[i]);
+                }
+                if (access(full_path, F_OK) != -1) {
+                  /* File exists, break from loop and execute */
+                  argv[i] = full_path;
+                  break;
+                }
+                path_split = strtok(NULL, ":");
+              }
+            }
+            free(path_copy);
+            // if (full_file_path == NULL) {
+              // full_file_path = argv[i];
+            // }
           }
           printf(" argv[%d] is %s\n",i, argv[i]);
         }
