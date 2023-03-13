@@ -31,24 +31,42 @@
 
 #include "word_count.h"
 #include "word_helpers.h"
-
+word_count_list_t word_counts;
+void* thread_task(char * filename);
 /*
  * main - handle command line, spawning one thread per file.
  */
 int main(int argc, char* argv[]) {
   /* Create the empty data structure. */
-  word_count_list_t word_counts;
+  // word_count_list_t word_counts;
   init_words(&word_counts);
-
   if (argc <= 1) {
     /* Process stdin in a single thread. */
     count_words(&word_counts, stdin);
   } else {
-    /* TODO */
+    /* Process in multithread.*/
+    size_t nthreads = argc - 1;
+    pthread_t threads[nthreads];
+    for (int i = 0; i < nthreads; ++i) {
+      int rc = pthread_create(&threads[i], NULL, thread_task, (char *)argv[i + 1]);
+      if (rc) {
+      printf("ERROR; return code from pthread_create() is %d\n", rc);
+      exit(-1);
+      }
+    }
+    for (int i = 0; i < nthreads; ++i) {
+      pthread_join(threads[i], NULL);
+    }
   }
-
   /* Output final result of all threads' work. */
   wordcount_sort(&word_counts, less_count);
   fprint_words(&word_counts, stdout);
   return 0;
+}
+
+void* thread_task(char *filename) {
+  FILE *file = fopen(filename, "r");
+  count_words(&word_counts, file);
+  fclose(file);
+  pthread_exit(NULL);
 }

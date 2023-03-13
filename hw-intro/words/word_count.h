@@ -46,6 +46,7 @@ struct word_count {
 /* Introduce a type name for the struct */
 typedef struct word_count WordCount;
 
+char *new_string(char *str);
 /* Initialize a word count list, updating the reference to the list */
 int init_words(WordCount **wclist);
 
