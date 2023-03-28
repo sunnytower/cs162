@@ -117,7 +117,18 @@ void handle_files_request(int fd) {
    */
 
   /* PART 2 & 3 BEGIN */
-
+  struct stat statbuff;
+  if (stat(path, &statbuff) == -1) {
+    perror("bind error!");
+    exit(errno);
+  } else {
+    http_start_response(fd, 200);
+    http_send_header(fd, "Content-Type", "text/html");
+    http_send_header(fd, "Content-Length",snprintf())
+    http_end_headers(fd);
+    serve_file(fd, path);
+    close(fd);
+  }
   /* PART 2 & 3 END */
 
   close(fd);
@@ -263,6 +274,16 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
    */
 
   /* PART 1 BEGIN */
+
+  if (bind(*socket_number, (struct sockaddr*)&server_address, sizeof(server_address)) == -1) {
+    perror("bind error!");
+    exit(errno);
+  }
+  const int backlog = 1024;
+  if (listen(*socket_number, backlog) == -1) {
+    perror("bind error!");
+    exit(errno);
+  }
 
   /* PART 1 END */
   printf("Listening on port %d...\n", server_port);
