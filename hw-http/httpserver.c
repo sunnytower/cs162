@@ -42,9 +42,19 @@ void serve_file(int fd, char* path) {
 
   http_start_response(fd, 200);
   http_send_header(fd, "Content-Type", http_get_mime_type(path));
-  http_send_header(fd, "Content-Length", "0"); // TODO: change this line too
+  struct stat buff;
+  stat(path, &buff);
+  char value[10];
+  snprintf(value, sizeof(value), "%ld", buff.st_size);
+  http_send_header(fd, "Content-Length", value);
   http_end_headers(fd);
-
+  /* write fp contents to fd */
+  char buffer[1024];
+  int fd_read = open(path, O_RDONLY);
+  size_t read_size = 0;
+  while ((read_size = read(fd_read, buffer, 100)) > 0) {
+    write(fd, buffer, read_size);
+  }
   /* PART 2 END */
 }
 
@@ -55,8 +65,27 @@ void serve_directory(int fd, char* path) {
 
   /* TODO: PART 3 */
   /* PART 3 BEGIN */
-
+  char opening[] =
+      "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\"\n</head>\n<body>\n";
+  write(fd, opening, sizeof(opening) - 1);
   // TODO: Open the directory (Hint: opendir() may be useful here)
+  DIR* current = opendir(path);
+  if (current == NULL) {
+    perror("can not open direcotry!");
+    exit(1);
+  } else {
+    struct dirent* entry;
+    while ((entry = readdir(current)) != NULL) {
+      char* filename = entry->d_name;
+      int length = strlen("<a href=\"//\"></a><br/>") + strlen(path) + strlen(filename) * 2 + 1;
+      char buffer[length];
+      http_format_href(buffer, path, filename);
+      write(fd, buffer, length);
+    }
+    close(current);
+    char closing[] = "\n</body>\n</html>\n";
+    write(fd, closing, sizeof(closing) - 1);
+  }
 
   /**
    * TODO: For each entry in the directory (Hint: look at the usage of readdir() ),
@@ -119,18 +148,24 @@ void handle_files_request(int fd) {
   /* PART 2 & 3 BEGIN */
   struct stat statbuff;
   if (stat(path, &statbuff) == -1) {
-    perror("bind error!");
-    exit(errno);
+    http_start_response(fd, 403);
   } else {
-    http_start_response(fd, 200);
-    http_send_header(fd, "Content-Type", "text/html");
-    http_send_header(fd, "Content-Length",snprintf())
-    http_end_headers(fd);
-    serve_file(fd, path);
-    close(fd);
+    if (S_ISDIR(statbuff.st_mode)) {
+      int length = strlen(path) + strlen("/index.html") + 1;
+      char index_path[length];
+      http_format_index(index_path, path);
+      struct stat statbuff2;
+      if (stat(index_path, &statbuff2) != -1) {
+        serve_file(fd, index_path);
+      } else {
+        serve_directory(fd, path);
+      }
+    } else if(S_ISREG(statbuff.st_mode)) {
+      serve_file(fd, path);
+    }
   }
   /* PART 2 & 3 END */
-
+  free(path);
   close(fd);
   return;
 }
