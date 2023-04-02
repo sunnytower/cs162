@@ -44,7 +44,7 @@ void serve_file(int fd, char* path) {
   http_send_header(fd, "Content-Type", http_get_mime_type(path));
   struct stat buff;
   stat(path, &buff);
-  char value[10];
+  char value[20];
   snprintf(value, sizeof(value), "%ld", buff.st_size);
   http_send_header(fd, "Content-Length", value);
   http_end_headers(fd);
@@ -82,7 +82,7 @@ void serve_directory(int fd, char* path) {
       http_format_href(buffer, path, filename);
       write(fd, buffer, length);
     }
-    close(current);
+    closedir(current);
     char closing[] = "\n</body>\n</html>\n";
     write(fd, closing, sizeof(closing) - 1);
   }
@@ -148,7 +148,7 @@ void handle_files_request(int fd) {
   /* PART 2 & 3 BEGIN */
   struct stat statbuff;
   if (stat(path, &statbuff) == -1) {
-    http_start_response(fd, 403);
+    http_start_response(fd, 404);
   } else {
     if (S_ISDIR(statbuff.st_mode)) {
       int length = strlen(path) + strlen("/index.html") + 1;
@@ -160,7 +160,7 @@ void handle_files_request(int fd) {
       } else {
         serve_directory(fd, path);
       }
-    } else if(S_ISREG(statbuff.st_mode)) {
+    } else {
       serve_file(fd, path);
     }
   }
@@ -183,6 +183,25 @@ void handle_files_request(int fd) {
  *
  *   Closes client socket (fd) and proxy target fd (target_fd) when finished.
  */
+
+struct forward_fd {
+  int read_fd;
+  int write_fd;
+  pthread_t* pthread;
+};
+
+void* forward(void* args) {
+  struct forward_fd* fds = (struct forward_fd*)args;
+  const size_t SIZE = 2048;
+  char buffer[SIZE];
+  size_t read_size = 0;
+  while ((read_size = read(fds->read_fd, buffer, sizeof(buffer))) > 0) {
+    write(fds->write_fd, buffer, read_size);
+  }
+  pthread_cancel(*(fds->pthread));
+  pthread_exit(0);
+}
+
 void handle_proxy_request(int fd) {
 
   /*
@@ -233,7 +252,17 @@ void handle_proxy_request(int fd) {
 
   /* TODO: PART 4 */
   /* PART 4 BEGIN */
-
+  /* create 2 threads to communicate A to B*/
+  pthread_t client_server;
+  pthread_t server_client;
+  struct forward_fd client_server_fd = {fd, target_fd, &server_client};
+  struct forward_fd server_client_fd = {target_fd, fd, &client_server};
+  pthread_create(&client_server, NULL, forward, &client_server_fd);
+  pthread_create(&server_client, NULL, forward, &server_client_fd);
+  pthread_join(client_server, NULL);
+  pthread_join(server_client, NULL);
+  close(target_fd);
+  close(fd);
   /* PART 4 END */
 }
 
