@@ -281,7 +281,10 @@ void* handle_clients(void* void_request_handler) {
 
   /* TODO: PART 7 */
   /* PART 7 BEGIN */
-
+  while (1) {
+    int client_socket_fd = wq_pop(&work_queue);
+    request_handler(client_socket_fd);
+  }
   /* PART 7 END */
 }
 
@@ -292,7 +295,11 @@ void init_thread_pool(int num_threads, void (*request_handler)(int)) {
 
   /* TODO: PART 7 */
   /* PART 7 BEGIN */
-
+  wq_init(&work_queue);
+  for (int i = 0; i < num_threads; ++i) {
+    pthread_t thread;
+    pthread_create(&thread, NULL, handle_clients, (void*)request_handler);
+  }
   /* PART 7 END */
 }
 #endif
@@ -395,7 +402,18 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      */
 
     /* PART 5 BEGIN */
-
+    pid_t pid = fork();
+    if (pid < 0) {
+      perror("fork");
+      continue;
+    } else if (pid == 0) {
+      /* Child process */
+      close(*socket_number); // Child process don't need to listen
+      request_handler(client_socket_number);
+      exit(EXIT_SUCCESS); // Afterwards, the child process should exit
+    } else {              // Parent process
+      close(client_socket_number);
+    }
     /* PART 5 END */
 
 #elif THREADSERVER
@@ -408,9 +426,25 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      * listening and accepting connections. The main
      * thread will NOT be joining with the new thread.
      */
+    struct thread_server_handler_args {
+      int client_socket_fd;
+      void (*request_handler)(int);
+    };
+
+    void* thread_server_handler(void* void_args) {
+      struct thread_server_handler_args* args = (struct thread_server_handler_args*)void_args;
+      pthread_detach(pthread_self());
+      args->request_handler(args->client_socket_fd);
+      free(args);
+      pthread_exit(0);
+    }
 
     /* PART 6 BEGIN */
-
+    pthread_t thread;
+    struct thread_server_handler_args* args = malloc(sizeof(struct thread_server_handler_args));
+    args->client_socket_fd = client_socket_number;
+    args->request_handler = request_handler;
+    pthread_create(&thread, NULL, thread_server_handler, (void*)args);
     /* PART 6 END */
 #elif POOLSERVER
     /*
@@ -422,7 +456,7 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      */
 
     /* PART 7 BEGIN */
-
+    wq_push(&work_queue, client_socket_number);
     /* PART 7 END */
 #endif
   }
