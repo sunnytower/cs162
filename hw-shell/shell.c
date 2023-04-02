@@ -111,7 +111,6 @@ void init_shell() {
   }
 }
 
-
 void child_task(int start, int end, struct tokens* tokens) {
   char* argv[end - start + 1];
   int k = 0;
@@ -138,7 +137,7 @@ void child_task(int start, int end, struct tokens* tokens) {
   const char* cmd = tokens_get_token(tokens, start);
   if (strchr(cmd, '/')) {
     if (execv(cmd, argv) == -1) {
-        perror(cmd);
+      perror(cmd);
     }
   } else {
     /* program in PATH */
@@ -161,6 +160,29 @@ void child_task(int start, int end, struct tokens* tokens) {
   exit(-1);
 }
 
+
+void ignore_signal_handler() {
+  signal(SIGINT, SIG_IGN);
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGKILL, SIG_IGN);
+  signal(SIGTERM, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
+  signal(SIGCONT, SIG_IGN);
+  signal(SIGTTIN, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
+}
+
+void default_singal_handler() {
+  signal(SIGINT, SIG_DFL);
+  signal(SIGQUIT, SIG_DFL);
+  signal(SIGKILL, SIG_DFL);
+  signal(SIGTERM, SIG_DFL);
+  signal(SIGTSTP, SIG_IGN);
+  signal(SIGCONT, SIG_DFL);
+  signal(SIGTTIN, SIG_DFL);
+  signal(SIGTTOU, SIG_DFL);
+}
+
 int execute(int read_fd, int write_fd, int start, int end, struct tokens* tokens) {
   pid_t pid = fork();
   if (pid == -1) {
@@ -170,9 +192,14 @@ int execute(int read_fd, int write_fd, int start, int end, struct tokens* tokens
     /* child */
     dup2(read_fd, STDIN_FILENO);
     dup2(write_fd, STDOUT_FILENO);
+    /* signal handler */
+    setpgrp();
+    default_singal_handler();
     child_task(start, end, tokens);
   } else {
     /* parent */
+    ignore_signal_handler();
+    tcsetpgrp(shell_terminal, pid);
   }
   return 0;
 }
@@ -220,6 +247,7 @@ int run_tasks(struct tokens* tokens) {
   for (int i = 0; i < process_num; ++i) {
     wait(NULL);
   }
+  tcsetpgrp(shell_terminal, shell_pgid);
   return 0;
 }
 
