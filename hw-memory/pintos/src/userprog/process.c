@@ -204,7 +204,6 @@ bool load(const char* file_name, void (**eip)(void), void** esp) {
   bool success = false;
   int i;
 
-  uint32_t heap_start = 0;
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create();
   if (t->pagedir == NULL)
@@ -262,6 +261,10 @@ bool load(const char* file_name, void (**eip)(void), void** esp) {
                      Read initial part from disk and zero the rest. */
             read_bytes = page_offset + phdr.p_filesz;
             zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE) - read_bytes);
+
+            /* init heap */
+            t->heap = (void*)pg_round_up((const void*)mem_page);
+            t->brk = (void*)pg_round_up((const void*)mem_page);
           } else {
             /* Entirely zero.
                      Don't read anything from disk. */
@@ -286,10 +289,6 @@ bool load(const char* file_name, void (**eip)(void), void** esp) {
   success = true;
 
 done:
-  if (success) {
-    /* init heap*/
-
-  }
   /* We arrive here whether the load is successful or not. */
   file_close(file);
   return success;
