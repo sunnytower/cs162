@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
+#include <unistd.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -75,7 +76,9 @@ static void syscall_close(int fd) {
     t->open_file = NULL;
   }
 }
-
+static void syscall_sbrk(int increment) {
+  
+}
 static void syscall_handler(struct intr_frame* f) {
   uint32_t* args = (uint32_t*)f->esp;
   struct thread* t = thread_current();
@@ -110,7 +113,10 @@ static void syscall_handler(struct intr_frame* f) {
       validate_buffer_in_user_region(&args[1], sizeof(uint32_t));
       syscall_close((int)args[1]);
       break;
-
+    case SYS_SBRK:
+      validate_buffer_in_user_region(&args[1], sizeof(uint32_t));
+      syscall_sbrk((int)args[1]);
+      break;
     default:
       printf("Unimplemented system call: %d\n", (int)args[0]);
       break;
