@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
-#include <unistd.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -76,15 +75,16 @@ static void* syscall_close(int fd) {
     t->open_file = NULL;
   }
 }
+
 static void* syscall_sbrk(int increment) {
   struct thread* t = thread_current();
-  void* brk_ = t->brk;
+  void* old_brk = t->brk;
   t->brk += increment;
-  if (t->brk > pg_round_up(brk_)) {
+  if (t->brk > pg_round_up(old_brk)) {
     /* grow */
     void* upage;
     bool fail = false;
-    for (upage = pg_round_up(brk_); upage != pg_round_up(t->brk); upage += PGSIZE) {
+    for (upage = pg_round_up(old_brk); upage != pg_round_up(t->brk); upage += PGSIZE) {
       void* kpage = palloc_get_page(PAL_ZERO | PAL_USER);
       if (kpage == NULL) {
         fail = true;
@@ -93,22 +93,23 @@ static void* syscall_sbrk(int increment) {
       pagedir_set_page(t->pagedir, upage, kpage, true);
     }
     if (fail) {
-      for (void* pg = pg_round_up(brk_); pg != upage; pg += PGSIZE) {
+      for (void* pg = pg_round_up(old_brk); pg != upage; pg += PGSIZE) {
         palloc_free_page(pagedir_get_page(t->pagedir, pg));
         pagedir_clear_page(t->pagedir, pg);
       }
-      t->brk = brk_;
+      t->brk = old_brk;
       return (void*)-1;
     }
-  } else if (t->brk <= pg_round_down(brk_)) {
+  } else if (t->brk <= pg_round_down(old_brk)) {
     /* shrink */
-    for (void* upage = pg_round_down(brk_); upage != pg_round_down(t->brk - 1); upage -= PGSIZE) {
+    for (void* upage = pg_round_down(old_brk); upage != pg_round_down(t->brk - 1); upage -= PGSIZE) {
       palloc_free_page(pagedir_get_page(t->pagedir, upage));
       pagedir_clear_page(t->pagedir, upage);
     }
   }
-  return brk_;
+  return old_brk;
 }
+
 static void syscall_handler(struct intr_frame* f) {
   uint32_t* args = (uint32_t*)f->esp;
   struct thread* t = thread_current();

@@ -98,8 +98,6 @@ struct thread {
 #ifdef USERPROG
   /* Owned by process.c. */
   struct process* pcb; /* Process control block if this thread is a userprog */
-  void* heap;
-  void* brk;
 #endif
 
   /* Owned by thread.c. */

@@ -263,8 +263,8 @@ bool load(const char* file_name, void (**eip)(void), void** esp) {
             zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE) - read_bytes);
 
             /* init heap */
-            t->heap = (void*)pg_round_up((const void*)mem_page);
-            t->brk = (void*)pg_round_up((const void*)mem_page);
+            t->heap = pg_round_up(mem_page + read_bytes + zero_bytes);
+            t->brk = pg_round_up(mem_page + read_bytes + zero_bytes);
           } else {
             /* Entirely zero.
                      Don't read anything from disk. */
