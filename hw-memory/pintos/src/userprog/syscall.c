@@ -75,7 +75,7 @@ static void* syscall_close(int fd) {
     t->open_file = NULL;
   }
 }
-
+  // TODO: factor using palloc_get_multiple
 static void* syscall_sbrk(int increment) {
   struct thread* t = thread_current();
   void* old_brk = t->brk;
