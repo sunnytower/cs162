@@ -16,52 +16,58 @@ CLIENT* clnt_connect(char* host) {
 }
 
 int example(int input) {
-  CLIENT *clnt = clnt_connect(HOST);
+  CLIENT* clnt = clnt_connect(HOST);
 
   int ret;
-  int *result;
+  int* result;
 
   result = example_1(&input, clnt);
-  if (result == (int *)NULL) {
+  if (result == (int*)NULL) {
     clnt_perror(clnt, "call failed");
     exit(1);
   }
   ret = *result;
-  xdr_free((xdrproc_t)xdr_int, (char *)result);
+  xdr_free((xdrproc_t)xdr_int, (char*)result);
 
   clnt_destroy(clnt);
-  
+
   return ret;
 }
 
 char* echo(char* input) {
-  CLIENT *clnt = clnt_connect(HOST);
+  CLIENT* clnt = clnt_connect(HOST);
 
   char* ret;
-
-  /* TODO */
+  char** result;
+  result = echo_1(&input, clnt);
+  if (result == (char**)NULL) {
+    clnt_perror(clnt, "call failed");
+    exit(1);
+  }
+  ret = strdup(*result);
+  xdr_free((xdrproc_t)xdr_int, (char*)result);
 
   clnt_destroy(clnt);
-  
+
   return ret;
 }
 
 void put(buf key, buf value) {
-  CLIENT *clnt = clnt_connect(HOST);
+  CLIENT* clnt = clnt_connect(HOST);
 
-  /* TODO */
+  key_value input = {key, value};
+  put_1(&input, clnt);
 
   clnt_destroy(clnt);
 }
 
 buf* get(buf key) {
-  CLIENT *clnt = clnt_connect(HOST);
+  CLIENT* clnt = clnt_connect(HOST);
 
   buf* ret;
 
-  /* TODO */
-
+  ret = get_1(&key, clnt);
   clnt_destroy(clnt);
-  
+
   return ret;
 }
